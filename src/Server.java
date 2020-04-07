@@ -69,6 +69,7 @@ public class Server {
 		// Create buffer to read data
 		ByteBuffer buffer = ByteBuffer.allocate(1024);
 		int res = client.read(buffer);
+		System.out.println(res);
 		if (res < 0)
 		{
 			client.close();
@@ -76,34 +77,9 @@ public class Server {
 		}
 		else
 		{
-			//Parse data from buffer to String
-			String data = new String(buffer.array()).trim();
-			if (data.length() > 0) {
-				System.out.println("Received message: " + data);
-				if (data.equalsIgnoreCase("4-18-9999-Goodbye-")) {
-					client.close();
-					System.out.println("Connection closed...");
-				}
-				else
-				{
-					System.out.println(processMessage(data));
-				}
-			}
+			int s = buffer.getInt();
+			System.out.println(s);
 		}
-	}
-
-	static String processMessage(String msg)
-	{
-		int messageLength = msg.length();
-		String[] arrOfStr = msg.split("-");
-		if (messageLength > Integer.parseInt(arrOfStr[1]))
-		{
-			String messagge = msg.substring(0,Integer.parseInt(arrOfStr[1]));
-			String otherMsg = msg.substring(Integer.parseInt(arrOfStr[1]));
-			System.out.println(messagge);
-			System.out.println(otherMsg);
-		}
-		return arrOfStr[2];
 	}
 }
 
