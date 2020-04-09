@@ -12,6 +12,7 @@ import java.util.Set;
 public class Server {
 
 	private static Selector selector = null;
+	private static Player myplayer = null;
 
 	public static void main(String[] args) {
 
@@ -58,28 +59,53 @@ public class Server {
 
 		// Register that client is reading this channel
 		client.register(selector, SelectionKey.OP_READ);
+		myplayer = new Player(client);
 	}
 
 	private static void handleRead(SelectionKey key)
 			throws IOException {
-		System.out.println("Reading...");
+		// System.out.println("Reading...");
 		// create a ServerSocketChannel to read the request
 		SocketChannel client = (SocketChannel) key.channel();
+		if (myplayer != null) {
+			if (client != myplayer.socket) {
+				System.out.println("player socket doesn't match");
+				System.exit(0);
+			}
 
-		// Create buffer to read data
-		ByteBuffer buffer = ByteBuffer.allocate(1024);
-		int res = client.read(buffer);
-		System.out.println(res);
-		if (res < 0)
-		{
-			client.close();
-			System.out.println("Connection closed...");
+			int res = myplayer.handleRead();
+			if (res < 0) {
+				// player has disconnected, clean up
+				// close for now
+				myplayer = null;
+				// System.exit(0);
+			}
 		}
-		else
-		{
-			int s = buffer.getInt();
-			System.out.println(s);
-		}
+
+		//		// Create buffer to read data
+		//		ByteBuffer buffer = ByteBuffer.allocate(1024);
+		//		int res = client.read(buffer);
+		//		System.out.println("client.read " + res);
+		//		System.out.println("buffer remaining "+ buffer.remaining());
+		//		System.out.println("buffer limit "+ buffer.limit());
+		//		System.out.println("buffer position "+ buffer.position());
+		//		if (res < 0)
+		//		{
+		//			client.close();
+		//			System.out.println("Connection closed...");
+		//		}
+		//		else
+		//		{
+		//			buffer.flip();
+		//			System.out.println("buffer remaining "+ buffer.remaining());
+		//			System.out.println("buffer limit "+ buffer.limit());
+		//			System.out.println("buffer position "+ buffer.position());
+		//			int s = buffer.getInt();
+		//			System.out.println(s);
+		//			System.out.println("buffer remaining "+ buffer.remaining());
+		//			System.out.println("buffer limit "+ buffer.limit());
+		//			System.out.println("buffer position "+ buffer.position());
+		//		}
 	}
 }
 
