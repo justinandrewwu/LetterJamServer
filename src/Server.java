@@ -6,15 +6,30 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
 public class Server {
 
-	private static Selector selector = null;
-	private static Player myplayer = null;
+	private Selector selector = null;
+	private Player[] seats;
+	private int numSeated = 0;
+	private static final String LJLETTERS = "AAAABBCCCDDDEEEEEEFFGGHHHIIIIKKLLLMMNNOOOOPPRRRRSSSSTTTTUUUWWYY";
+	String[] playerLetters;
+
+	public Server() {
+		seats = new Player[6];
+		for (int i = 0; i < seats.length; i++)
+		{
+			seats[i] = null;
+		}
+	}
 
 	public static void main(String[] args) {
+		Server mainServer = new Server();
+		mainServer.mainLoop();
+	}
+
+	public void mainLoop() {
 
 		try {
 			selector = Selector.open();
@@ -48,7 +63,7 @@ public class Server {
 		}
 	}
 
-	private static void handleAccept(ServerSocketChannel mySocket,
+	private void handleAccept(ServerSocketChannel mySocket,
 			SelectionKey key) throws IOException {
 
 		System.out.println("Connection Accepted...");
@@ -59,28 +74,49 @@ public class Server {
 
 		// Register that client is reading this channel
 		client.register(selector, SelectionKey.OP_READ);
-		myplayer = new Player(client);
+		Player myplayer = new Player(client,this);
+
+		for (int i = 0; i < seats.length; i++)
+		{
+			if (seats[i] == null) {
+				seats[i] = myplayer;
+				numSeated++;
+				break;
+			}
+			else if (seats[i] == myplayer) {
+				break;
+			}
+		}
 	}
 
-	private static void handleRead(SelectionKey key)
+	private void handleRead(SelectionKey key)
 			throws IOException {
 		// System.out.println("Reading...");
 		// create a ServerSocketChannel to read the request
 		SocketChannel client = (SocketChannel) key.channel();
-		if (myplayer != null) {
-			if (client != myplayer.socket) {
-				System.out.println("player socket doesn't match");
-				System.exit(0);
-			}
+		Player myplayer = null;
 
-			int res = myplayer.handleRead();
-			if (res < 0) {
-				// player has disconnected, clean up
-				// close for now
-				myplayer = null;
-				// System.exit(0);
+		for (int i = 0; i < seats.length; i++)
+		{
+			if (seats[i].socket == client) {
+				myplayer = seats[i];
+				int res = myplayer.handleRead();
+				if (res < 0) {
+					// player has disconnected, clean up
+					// close for now
+					myplayer = null;
+					// System.exit(0);
+				}
+				break;
 			}
 		}
+		if (myplayer == null) {
+			System.out.println("No matching client found");
+			System.exit(0);
+		}
+
+
+
 
 		//		// Create buffer to read data
 		//		ByteBuffer buffer = ByteBuffer.allocate(1024);
@@ -106,6 +142,53 @@ public class Server {
 		//			System.out.println("buffer limit "+ buffer.limit());
 		//			System.out.println("buffer position "+ buffer.position());
 		//		}
+	}
+
+	public void processJoinMessage() {
+		int numberOfPlayersExpected = 2; //TODO: change to serverwide
+		if (numSeated >= numberOfPlayersExpected) {
+			startGame(numSeated);
+		}
+	}
+
+	private void startGame(int numPlayers) {
+		playerLetters = splitStringEvenly(LJLETTERS,numPlayers);
+		for (int i = 0; i < seats.length; i++)
+		{
+			if (seats[i] != null) {
+				seats[i].startGame(playerLetters[i]);
+			}
+		}
+	}
+
+	private static String[] splitStringEvenly(String letters, int num) {
+		String[] res = new String[num];
+		int place = 0;
+		letters = shuffle(letters);
+		for (int i = letters.length()-1; i >= 0; i--) {
+			if (res[place] == null) {
+				res[place] = "";
+			}
+			res[place] = res[place] + letters.substring(i,i+1);
+			place++;
+			if (place == num) {
+				place = 0;
+			}
+		}
+		return res;
+	}
+
+	public static String shuffle(String input){
+		List<Character> characters = new ArrayList<Character>();
+		for(char c:input.toCharArray()){
+			characters.add(c);
+		}
+		StringBuilder output = new StringBuilder(input.length());
+		while(characters.size()!=0){
+			int randPicker = (int)(Math.random()*characters.size());
+			output.append(characters.remove(randPicker));
+		}
+		return output.toString();
 	}
 }
 

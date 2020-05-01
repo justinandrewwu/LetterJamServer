@@ -32,9 +32,11 @@ public class Player {
 	public SocketChannel socket;
 	private ByteBuffer rbuf;
 	private ByteBuffer wbuf;
+	private Server letterJam;
 
-	Player(SocketChannel s)
+	Player(SocketChannel s, Server server)
 	{
+		letterJam = server;
 		socket = s;
 		rbuf = ByteBuffer.allocate(1024);
 		wbuf = ByteBuffer.allocate(1024);
@@ -94,10 +96,12 @@ public class Player {
 						break;
 					}
 					case MSG_MORE_LETTERS: {
+						//sendMoreLetters
 						System.out.println("Received MSG_MORE_LETTERS");
 						break;
 					}
 					case MSG_MY_WORD: {
+						//
 						System.out.println("Received MSG_MY_WORD");
 						break;
 					}
@@ -155,21 +159,22 @@ public class Player {
 	}
 
 	private void processJoinMessage(String name) {
-		sendStringMsg(wbuf,MSG_USER_JOIN,name);
+		sendStringMsg(wbuf, MSG_USER_JOIN, name);
+		letterJam.processJoinMessage();
 	}
 
-	public int sendStringMsg(ByteBuffer rbuf,int msgid, String str)
+	public int sendStringMsg(ByteBuffer buf,int msgid, String str)
 	{
 		try {
 			int length = str.length() + 12;
 			System.out.println("Length = "+length);
-			rbuf.clear();
-			rbuf.putInt(MARKER);
-			rbuf.putInt(length);
-			rbuf.putInt(msgid);
-			rbuf.put(str.getBytes());
-			rbuf.flip();
-			int bytes = socket.write(rbuf);
+			buf.clear();
+			buf.putInt(MARKER);
+			buf.putInt(length);
+			buf.putInt(msgid);
+			buf.put(str.getBytes());
+			buf.flip();
+			int bytes = socket.write(buf);
 			System.out.println("bytes written "+bytes);
 			return bytes;
 		} catch (IOException e) {
@@ -190,30 +195,11 @@ public class Player {
 
 	}
 
-	public int sendStringMsg(int msgid, String str)
-	{
-		try {
-			int length = str.length() + 12;
-			wbuf.reset();
-			wbuf.putInt(MARKER);
-			wbuf.putInt(length);
-			wbuf.putInt(msgid);
-			wbuf.put(str.getBytes());
-			wbuf.flip();
-			int bytes = socket.write(wbuf);
-			return bytes;
-		} catch (IOException e) {
-			System.out.println("sendJoin Exception: " + e);
-			e.printStackTrace();
-			return -1;
-		}
-	}
-
 	public int closeConnection(String str)
 	{
 		if (str != null) {
 			System.out.println("closing Connection: "+str);
-			sendStringMsg(MSG_ERROR, str);
+			sendStringMsg(wbuf, MSG_ERROR, str);
 		}
 		// free rbufs?
 		try {
@@ -223,5 +209,9 @@ public class Player {
 			e.printStackTrace();
 		}
 		return 0;
+	}
+
+	public void startGame(String playerLetter) {
+		sendStringMsg(wbuf, MSG_PICK_WORD, playerLetter);
 	}
 }
